@@ -1,0 +1,9 @@
+# Terraform provider binaries (too large, re-downloaded via terraform init)
+.terraform/
+
+# State files (contain sensitive infrastructure details)
+terraform.tfstate
+terraform.tfstate.backup
+
+# Sensitive variable values
+terraform.tfvars
