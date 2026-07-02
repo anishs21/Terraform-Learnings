@@ -22,8 +22,7 @@ module "s3_bucket" {
 }
 
 resource "aws_s3_bucket" "state-file-store-0123" {
-  bucket        = "state-file-store-0123dhbvhj"
-  force_destroy = true
+  bucket = "state-file-store-0123dhbvhj"
 }
 
 
