@@ -20,3 +20,10 @@ resource "aws_instance" "Test-instance-2" {
 module "s3_bucket" {
   source = "./modules/s3"
 }
+
+resource "aws_s3_bucket" "state-file-store-0123" {
+  bucket        = "state-file-store-0123dhbvhj"
+  force_destroy = true
+}
+
+
