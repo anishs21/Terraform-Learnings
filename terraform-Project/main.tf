@@ -104,47 +104,49 @@ resource "aws_key_pair" "flask_ssh_key" {
   public_key = file(pathexpand("~/.ssh/id_rsa.pub"))
 }
 
-# 9. EC2 Instance with Flask Application Bootstrap
+# 9. EC2 Instance with Provisioners
 resource "aws_instance" "flask_web_instance" {
-  ami                    = "ami-01a00762f46d584a1"
+  ami                    = "ami-01a00762f46d584a1" # Ubuntu 22.04 LTS
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.flask_public_subnet.id
   vpc_security_group_ids = [aws_security_group.flask_security_group.id]
   key_name               = aws_key_pair.flask_ssh_key.key_name
 
-  # Deploying your Flask code via user_data
-  user_data = <<-EOF
-              #!/bin/bash
-              # Update packages and install python dependencies
-              sudo apt-get update -y
-              sudo apt-get install python3-pip python3-venv -y
+  # Provisioner 1: Create the directory on the remote machine
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p /home/ubuntu/flask_app"
+    ]
+  }
 
-              # Create application directory
-              mkdir -p /home/ubuntu/flask_app
-              cd /home/ubuntu/flask_app
+  # Provisioner 2: Push your local application files to the instance
+  # Change source path to your local project folder (e.g., "./app.py" or "./my_flask_project")
+  provisioner "file" {
+    source      = "./app.py"
+    destination = "/home/ubuntu/flask_app/app.py"
+  }
 
-              # Write your Flask code to app.py
-              cat << 'APP_CODE' > app.py
-              from flask import Flask
+  # Provisioner 3: Install dependencies and start the app via SSH execution
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update -y",
+      "sudo apt-get install python3-pip python3-venv -y",
+      "cd /home/ubuntu/flask_app",
+      "python3 -m venv venv",
+      "./venv/bin/pip install flask",
+      # Runs the app with root privileges to bind to port 80 in the background
+      "sudo /home/ubuntu/flask_app/venv/bin/python3 app.py > flask.log 2>&1 &",
+      "sleep 2" # Gives the process a moment to initialize before closing the connection
+    ]
+  }
 
-              app = Flask(__name__)
-
-              @app.route("/")
-              def hello():
-                  return "Hello, Terraform!"
-
-              if __name__ == "__main__":
-                  app.run(host="0.0.0.0", port=80)
-              APP_CODE
-
-              # Set up a virtual environment and install flask
-              python3 -m venv venv
-              source venv/bin/activate
-              pip3 install flask
-
-              # Run the application with root privileges to bind to port 80
-              sudo /home/ubuntu/flask_app/venv/bin/python3 app.py > flask.log 2>&1 &
-              EOF
+  # Connection block telling the provisioners how to log into the VM
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = file(pathexpand("~/.ssh/id_rsa")) # Path to your matching local private key
+    host        = self.public_ip
+  }
 
   tags = {
     Name = "flask-web-server"

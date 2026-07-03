@@ -21,8 +21,3 @@ module "s3_bucket" {
   source = "./modules/s3"
 }
 
-resource "aws_s3_bucket" "state-file-store-0123" {
-  bucket = "state-file-store-0123dhbvhj"
-}
-
-
