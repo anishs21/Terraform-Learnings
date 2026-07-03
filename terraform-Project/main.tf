@@ -12,6 +12,21 @@ provider "aws" {
   region = "ap-south-1"
 }
 
+# ─────────────────────────────────────────────────────────────
+# Workspace → Instance Type mapping
+# dev = t3.micro | stg = t3.medium | prod = t3.large
+# ─────────────────────────────────────────────────────────────
+locals {
+  instance_type_map = {
+    dev  = "t3.micro"
+    stg  = "t3.medium"
+    prod = "t3.large"
+  }
+
+  # Picks the right size based on current workspace; falls back to t3.micro
+  instance_type = lookup(local.instance_type_map, terraform.workspace, "t3.micro")
+}
+
 # 2. Virtual Private Cloud
 resource "aws_vpc" "flask_application_vpc" {
   cidr_block           = "10.0.0.0/16"
@@ -107,7 +122,7 @@ resource "aws_key_pair" "flask_ssh_key" {
 # 9. EC2 Instance with Provisioners
 resource "aws_instance" "flask_web_instance" {
   ami                    = "ami-01a00762f46d584a1" # Ubuntu 22.04 LTS
-  instance_type          = "t2.micro"
+  instance_type          = local.instance_type     # auto-selected based on workspace
   subnet_id              = aws_subnet.flask_public_subnet.id
   vpc_security_group_ids = [aws_security_group.flask_security_group.id]
   key_name               = aws_key_pair.flask_ssh_key.key_name
